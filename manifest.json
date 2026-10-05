@@ -1,0 +1,20 @@
+[
+  {
+    "display_name": "MovieBox",
+    "value": "movieBox",
+    "version": "1.0",
+    "icon": "https://www.moviebox.ng/favicon.ico",
+    "type": "global",
+    "hasSettings": false,
+    "description": "Movies & Web Series worldwide via MovieBox official web API"
+  },
+  {
+    "display_name": "MX Player",
+    "value": "mxPlayer",
+    "version": "1.0",
+    "icon": "https://www.mxplayer.in/favicon.ico",
+    "type": "global",
+    "hasSettings": false,
+    "description": "Hindi movies, dramas & web series via official MX Player API"
+  }
+]

@@ -1,0 +1,6 @@
+{
+  "watch": ["providers"],
+  "ext": "ts,js,json",
+  "exec": "node dev-server.js",
+  "ignore": ["dist", "node_modules"]
+}

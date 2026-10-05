@@ -1,0 +1,33 @@
+{
+  "name": "vega-phisher-providers",
+  "version": "1.0.0",
+  "description": "Phisher98's provider collection ported for vega-app — movies, anime, series",
+  "main": "index.js",
+  "scripts": {
+    "build": "node build-bundled.js",
+    "dev": "nodemon",
+    "dev:server": "node dev-server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cheerio": "^1.0.0",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/cheerio": "^0.22.35",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.30",
+    "esbuild": "^0.20.2",
+    "nodemon": "^3.1.0",
+    "typescript": "^5.4.3"
+  },
+  "keywords": [
+    "vega",
+    "vega-app",
+    "provider",
+    "phisher",
+    "streaming"
+  ],
+  "author": "phisher98 (ported for vega)",
+  "license": "MIT"
+}
