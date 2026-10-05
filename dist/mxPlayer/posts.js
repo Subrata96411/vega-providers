@@ -104,7 +104,7 @@ var getPosts = /* @__PURE__ */ __name(function(_0) {
   }) {
     var _a, _b;
     const { axios } = providerContext;
-    const queryFilter = filter || "browseLangFilterIds=hi&type=1";
+    const queryFilter = filter || "type=2";
     const url = `${WEB_API}/detail/browseItem?pageNum=${page}&pageSize=20&isCustomized=true&${queryFilter}&device-density=2&platform=com.mxplay.desktop&content-languages=hi,en&kids-mode-enabled=false`;
     const res = yield axios.get(url, {
       headers: __spreadProps(__spreadValues({}, commonHeaders), { Referer: `${MAIN_URL}/` }),
@@ -113,6 +113,8 @@ var getPosts = /* @__PURE__ */ __name(function(_0) {
     const items = (_b = (_a = res.data) == null ? void 0 : _a.items) != null ? _b : [];
     return items.map((item) => {
       var _a2, _b2, _c, _d, _e, _f, _g, _h, _i;
+      const isTvShow = item.type === "tvshow" || item.type === 2 || !item.stream;
+      const itemType = isTvShow ? "series" : "movie";
       const hls = ((_b2 = (_a2 = item.stream) == null ? void 0 : _a2.thirdParty) == null ? void 0 : _b2.hlsUrl) || ((_d = (_c = item.stream) == null ? void 0 : _c.hls) == null ? void 0 : _d.high) || ((_f = (_e = item.stream) == null ? void 0 : _e.hls) == null ? void 0 : _f.base) || ((_h = (_g = item.stream) == null ? void 0 : _g.hls) == null ? void 0 : _h.main);
       const thumbnail = getBestThumbnail(item);
       return {
@@ -120,13 +122,15 @@ var getPosts = /* @__PURE__ */ __name(function(_0) {
         link: JSON.stringify({
           id: item.id,
           title: item.title,
+          type: itemType,
+          shareUrl: item.shareUrl || `/detail/${isTvShow ? "tvshow" : "movie"}/${item.id}`,
           hls: hls || null,
           description: item.description || "",
           rating: item.rating ? String(item.rating) : "",
           image: thumbnail
         }),
         image: thumbnail,
-        tag: "Movie",
+        tag: isTvShow ? "Series" : "Movie",
         cornerTag: ((_i = item.languages) == null ? void 0 : _i[0]) || void 0
       };
     });
@@ -139,7 +143,7 @@ var getSearchPosts = /* @__PURE__ */ __name(function(_0) {
     signal,
     providerContext
   }) {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     const { axios } = providerContext;
     const url = `${WEB_API}/search/result?query=${encodeURIComponent(searchQuery)}&pageNum=${page}&pageSize=20&device-density=2&platform=com.mxplay.desktop&content-languages=hi,en&kids-mode-enabled=false`;
     const res = yield axios.get(url, {
@@ -153,20 +157,24 @@ var getSearchPosts = /* @__PURE__ */ __name(function(_0) {
       for (const item of items) {
         if (!(item == null ? void 0 : item.id) || !(item == null ? void 0 : item.title))
           continue;
-        const hls = ((_c = (_b = item.stream) == null ? void 0 : _b.thirdParty) == null ? void 0 : _c.hlsUrl) || ((_e = (_d = item.stream) == null ? void 0 : _d.hls) == null ? void 0 : _e.high) || ((_g = (_f = item.stream) == null ? void 0 : _f.hls) == null ? void 0 : _g.base);
+        const isTvShow = ((_b = sec.name) == null ? void 0 : _b.toLowerCase().includes("show")) || item.type === "tvshow" || !item.stream;
+        const itemType = isTvShow ? "series" : "movie";
+        const hls = ((_d = (_c = item.stream) == null ? void 0 : _c.thirdParty) == null ? void 0 : _d.hlsUrl) || ((_f = (_e = item.stream) == null ? void 0 : _e.hls) == null ? void 0 : _f.high) || ((_h = (_g = item.stream) == null ? void 0 : _g.hls) == null ? void 0 : _h.base);
         const thumbnail = getBestThumbnail(item);
         posts.push({
           title: item.title || "",
           link: JSON.stringify({
             id: item.id,
             title: item.title,
+            type: itemType,
+            shareUrl: item.shareUrl || `/detail/${isTvShow ? "tvshow" : "movie"}/${item.id}`,
             hls: hls || null,
             description: item.description || "",
             rating: item.rating ? String(item.rating) : "",
             image: thumbnail
           }),
           image: thumbnail,
-          tag: sec.name || "Movie"
+          tag: sec.name || (isTvShow ? "Series" : "Movie")
         });
       }
     }
