@@ -195,7 +195,8 @@ var pageSize = 18;
 var requestHeaders = {
   Accept: "application/json",
   "x-client-info": JSON.stringify({ timezone: "Asia/Colombo" }),
-  "x-source": ""
+  "x-source": "",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 };
 function collectSubjectPreviews(value) {
   const subjects = /* @__PURE__ */ new Map();
@@ -219,63 +220,31 @@ function collectSubjectPreviews(value) {
   return subjects;
 }
 __name(collectSubjectPreviews, "collectSubjectPreviews");
-function fetchPosts(path, signal, providerContext) {
-  return __async(this, null, function* () {
-    const baseUrl = yield getBaseUrl(providerValue);
-    const response = yield fetch(absoluteUrl(baseUrl, path), { signal });
-    if (!response.ok)
-      throw new Error(`MovieBox Web returned ${response.status}`);
-    const html = yield response.text();
-    const $ = providerContext.cheerio.load(html);
-    const subjects = collectSubjectPreviews(
-      parseNuxtData(html, providerContext.cheerio)
-    );
-    const posts = [];
-    const seen = /* @__PURE__ */ new Set();
-    $('a[href^="/moviesDetail/"]').each((_, element) => {
-      var _a, _b, _c, _d;
-      const card = $(element);
-      const href = card.attr("href") || "";
-      if (!href.startsWith("/moviesDetail/") || seen.has(href))
-        return;
-      const subject = subjects.get(href.replace("/moviesDetail/", ""));
-      if (path === "/upcoming" && (subject == null ? void 0 : subject.hasResource) !== true)
-        return;
-      const image = card.find("img").first();
-      const title = ((_a = subject == null ? void 0 : subject.title) == null ? void 0 : _a.trim()) || ((_b = card.find("h2, h3").first().attr("title")) == null ? void 0 : _b.trim()) || ((_c = image.attr("alt")) == null ? void 0 : _c.trim()) || card.find("h2, h3").first().text().trim() || ((_d = card.attr("title")) == null ? void 0 : _d.replace(/^go to /i, "").replace(/ detail page$/i, "").trim()) || "";
-      if (!title)
-        return;
-      seen.add(href);
-      posts.push({
-        title,
-        link: href,
-        image: image.attr("data-src") || (subject == null ? void 0 : subject.coverUrl) || image.attr("src") || ""
-      });
-    });
-    return posts;
-  });
-}
-__name(fetchPosts, "fetchPosts");
 function mapSubjects(subjects) {
   return subjects.filter(
     (subject) => Boolean(subject.detailPath && subject.title) && subject.hasResource !== false
-  ).map((subject) => ({
-    title: subject.title || "",
-    link: `/moviesDetail/${subject.detailPath}`,
-    image: subject.coverUrl || ""
-  }));
+  ).map((subject) => {
+    var _a;
+    return {
+      title: ((_a = subject.title) == null ? void 0 : _a.replace(/\s*\[.*?\]\s*$/, "")) || "",
+      link: `/moviesDetail/${subject.detailPath}`,
+      image: subject.coverUrl || ""
+    };
+  });
 }
 __name(mapSubjects, "mapSubjects");
 function fetchCatalogPage(filter, page, signal) {
   return __async(this, null, function* () {
     var _a;
-    const baseUrl = yield getBaseUrl(providerValue);
+    const baseUrl = (yield getBaseUrl(providerValue)) || "https://officialmoviebox.com";
     const params = new URLSearchParams({
       page: String(Math.max(1, page)),
       perPage: String(pageSize)
     });
     if (filter === "/newWeb/movie") {
       params.set("tabId", "ONEROOM_MOVIE");
+    } else if (filter === "/newWeb/tv-series") {
+      params.set("tabId", "ONEROOM_TV");
     }
     const response = yield fetch(
       absoluteUrl(
@@ -308,16 +277,10 @@ var getPosts = /* @__PURE__ */ __name(function(_0) {
   return __async(this, arguments, function* ({
     filter,
     page,
-    signal,
-    providerContext
+    signal
   }) {
     const path = filter || "/";
-    if (["/", "/newWeb/movie", "/newWeb/tv-series"].includes(path)) {
-      return fetchCatalogPage(path, page, signal);
-    }
-    if (page > 1)
-      return [];
-    return fetchPosts(path, signal, providerContext);
+    return fetchCatalogPage(path, page, signal);
   });
 }, "getPosts");
 var getSearchPosts = /* @__PURE__ */ __name(function(_0) {
@@ -329,11 +292,37 @@ var getSearchPosts = /* @__PURE__ */ __name(function(_0) {
   }) {
     if (page > 1 || !searchQuery.trim())
       return [];
-    return fetchPosts(
-      `/newWeb/searchResult?keyword=${encodeURIComponent(searchQuery.trim())}`,
-      signal,
-      providerContext
+    const baseUrl = (yield getBaseUrl(providerValue)) || "https://officialmoviebox.com";
+    const url = `${baseUrl}/newWeb/searchResult?keyword=${encodeURIComponent(searchQuery.trim())}`;
+    const response = yield fetch(url, { signal, headers: requestHeaders });
+    if (!response.ok)
+      return [];
+    const html = yield response.text();
+    const $ = providerContext.cheerio.load(html);
+    const subjects = collectSubjectPreviews(
+      parseNuxtData(html, providerContext.cheerio)
     );
+    const posts = [];
+    const seen = /* @__PURE__ */ new Set();
+    $('a[href^="/moviesDetail/"]').each((_, element) => {
+      var _a, _b;
+      const card = $(element);
+      const href = card.attr("href") || "";
+      if (!href.startsWith("/moviesDetail/") || seen.has(href))
+        return;
+      const detailP = href.replace("/moviesDetail/", "");
+      const subject = subjects.get(detailP);
+      const title = ((_a = subject == null ? void 0 : subject.title) == null ? void 0 : _a.trim()) || card.find("h2, h3").first().text().trim() || ((_b = card.find("img").attr("alt")) == null ? void 0 : _b.trim()) || "";
+      if (!title)
+        return;
+      seen.add(href);
+      posts.push({
+        title,
+        link: href,
+        image: (subject == null ? void 0 : subject.coverUrl) || card.find("img").attr("src") || ""
+      });
+    });
+    return posts;
   });
 }, "getSearchPosts");
 // Annotate the CommonJS export names for ESM import in node:

@@ -78,24 +78,23 @@ var mobileHeaders = __spreadProps(__spreadValues({}, commonHeaders), {
 var WEB_API = "https://api.mxplayer.in/v1/web";
 var IMAGE_CDN = "https://qqcdnpictest.mxplay.com";
 var MAIN_URL = "https://www.mxplayer.in";
-var GENRE_IDS = {
-  drama: "b413dff55bdad743c577a8bea3b65044",
-  crime: "48efa872f6f17facebf6149dfc536ee1",
-  thriller: "48efa872f6f17facebf6149dfc536ee1",
-  action: "7fa3e873a6e48291f69e9fae2a7c1f38"
-};
-var FILTER_TYPE = {
-  hindi_movies: { type: 1 },
-  hindi_web_series: { type: 2 }
-};
-function buildImageUrl(path) {
-  if (!path)
-    return "";
-  if (path.startsWith("http"))
-    return path;
-  return `${IMAGE_CDN}${path}`;
+function getBestThumbnail(item) {
+  const infoList = item.imageInfo || [];
+  const pLarge = infoList.find((x) => x.type === "portrait_large");
+  if (pLarge == null ? void 0 : pLarge.url)
+    return `${IMAGE_CDN}/${pLarge.url.replace(/^\/+/, "")}`;
+  const portrait = infoList.find((x) => x.type === "portrait");
+  if (portrait == null ? void 0 : portrait.url)
+    return `${IMAGE_CDN}/${portrait.url.replace(/^\/+/, "")}`;
+  const landscape = infoList.find((x) => x.type === "landscape" || x.type === "bigpic");
+  if (landscape == null ? void 0 : landscape.url)
+    return `${IMAGE_CDN}/${landscape.url.replace(/^\/+/, "")}`;
+  if (item.thumbnailUrl) {
+    return item.thumbnailUrl.startsWith("http") ? item.thumbnailUrl : `${IMAGE_CDN}/${item.thumbnailUrl.replace(/^\/+/, "")}`;
+  }
+  return "https://www.mxplayer.in/favicon.ico";
 }
-__name(buildImageUrl, "buildImageUrl");
+__name(getBestThumbnail, "getBestThumbnail");
 var getPosts = /* @__PURE__ */ __name(function(_0) {
   return __async(this, arguments, function* ({
     filter,
@@ -103,34 +102,31 @@ var getPosts = /* @__PURE__ */ __name(function(_0) {
     signal,
     providerContext
   }) {
-    var _a, _b, _c;
+    var _a, _b;
     const { axios } = providerContext;
-    const genreId = GENRE_IDS[filter];
-    const typeInfo = FILTER_TYPE[filter];
-    const type = (_a = typeInfo == null ? void 0 : typeInfo.type) != null ? _a : 1;
-    const url = `${WEB_API}/detail/browseItem?&pageNum=${page}&pageSize=20&isCustomized=true${genreId ? `&genreFilterIds=${genreId}` : ""}&type=${type}&device-density=2&platform=com.mxplay.desktop&content-languages=hi,en&kids-mode-enabled=false`;
+    const queryFilter = filter || "browseLangFilterIds=hi&type=1";
+    const url = `${WEB_API}/detail/browseItem?pageNum=${page}&pageSize=20&isCustomized=true&${queryFilter}&device-density=2&platform=com.mxplay.desktop&content-languages=hi,en&kids-mode-enabled=false`;
     const res = yield axios.get(url, {
       headers: __spreadProps(__spreadValues({}, commonHeaders), { Referer: `${MAIN_URL}/` }),
       signal
     });
-    const items = (_c = (_b = res.data) == null ? void 0 : _b.items) != null ? _c : [];
+    const items = (_b = (_a = res.data) == null ? void 0 : _a.items) != null ? _b : [];
     return items.map((item) => {
-      var _a2, _b2, _c2, _d, _e, _f, _g, _h, _i;
-      const hls = ((_b2 = (_a2 = item.stream) == null ? void 0 : _a2.thirdParty) == null ? void 0 : _b2.hlsUrl) || ((_d = (_c2 = item.stream) == null ? void 0 : _c2.hls) == null ? void 0 : _d.high) || ((_f = (_e = item.stream) == null ? void 0 : _e.hls) == null ? void 0 : _f.base);
-      const itemType = item.type === "movie" ? "movie" : "series";
+      var _a2, _b2, _c, _d, _e, _f, _g, _h, _i;
+      const hls = ((_b2 = (_a2 = item.stream) == null ? void 0 : _a2.thirdParty) == null ? void 0 : _b2.hlsUrl) || ((_d = (_c = item.stream) == null ? void 0 : _c.hls) == null ? void 0 : _d.high) || ((_f = (_e = item.stream) == null ? void 0 : _e.hls) == null ? void 0 : _f.base) || ((_h = (_g = item.stream) == null ? void 0 : _g.hls) == null ? void 0 : _h.main);
+      const thumbnail = getBestThumbnail(item);
       return {
         title: item.title || item.name || "",
         link: JSON.stringify({
           id: item.id,
-          type: itemType,
           title: item.title,
           hls: hls || null,
-          shareUrl: item.shareUrl
+          description: item.description || "",
+          rating: item.rating ? String(item.rating) : "",
+          image: thumbnail
         }),
-        image: buildImageUrl(
-          ((_h = (_g = item.imageInfo) == null ? void 0 : _g.find((x) => x.type === "portrait_large")) == null ? void 0 : _h.url) || item.thumbnailUrl || ""
-        ),
-        tag: itemType === "movie" ? "Movie" : "Series",
+        image: thumbnail,
+        tag: "Movie",
         cornerTag: ((_i = item.languages) == null ? void 0 : _i[0]) || void 0
       };
     });
@@ -143,7 +139,7 @@ var getSearchPosts = /* @__PURE__ */ __name(function(_0) {
     signal,
     providerContext
   }) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+    var _a, _b, _c, _d, _e, _f, _g;
     const { axios } = providerContext;
     const url = `${WEB_API}/search/result?query=${encodeURIComponent(searchQuery)}&pageNum=${page}&pageSize=20&device-density=2&platform=com.mxplay.desktop&content-languages=hi,en&kids-mode-enabled=false`;
     const res = yield axios.get(url, {
@@ -158,20 +154,19 @@ var getSearchPosts = /* @__PURE__ */ __name(function(_0) {
         if (!(item == null ? void 0 : item.id) || !(item == null ? void 0 : item.title))
           continue;
         const hls = ((_c = (_b = item.stream) == null ? void 0 : _b.thirdParty) == null ? void 0 : _c.hlsUrl) || ((_e = (_d = item.stream) == null ? void 0 : _d.hls) == null ? void 0 : _e.high) || ((_g = (_f = item.stream) == null ? void 0 : _f.hls) == null ? void 0 : _g.base);
-        const itemType = item.type === "movie" ? "movie" : "series";
+        const thumbnail = getBestThumbnail(item);
         posts.push({
           title: item.title || "",
           link: JSON.stringify({
             id: item.id,
-            type: itemType,
             title: item.title,
             hls: hls || null,
-            shareUrl: item.shareUrl
+            description: item.description || "",
+            rating: item.rating ? String(item.rating) : "",
+            image: thumbnail
           }),
-          image: buildImageUrl(
-            ((_i = (_h = item.imageInfo) == null ? void 0 : _h.find((x) => x.type === "portrait_large")) == null ? void 0 : _i.url) || item.thumbnailUrl || ""
-          ),
-          tag: sec.name || void 0
+          image: thumbnail,
+          tag: sec.name || "Movie"
         });
       }
     }
