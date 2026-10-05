@@ -55,6 +55,7 @@ var VegaProvider_movieBox = (() => {
     UhdMovies: { url: "https://uhdmovies.my" },
     kickAssAnime: { url: "https://kaa.lt" },
     movieBoxWeb: { url: "https://officialmoviebox.com" },
+    movieBox: { url: "https://officialmoviebox.com" },
     showbox: { url: "https://www.showbox.media" }
   };
   async function fetchProviderUrls() {

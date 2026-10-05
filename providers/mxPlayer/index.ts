@@ -5,8 +5,9 @@ import { catalog } from './catalog';
 import { getPosts, getSearchPosts } from './posts';
 import { getMeta } from './meta';
 import { getStream } from './stream';
+import { getEpisodes } from './episodes';
 
-export const MXPlayerProvider: ProviderType = {
+export const MXPlayerProvider: ProviderType & { GetEpisodeLinks?: any } = {
   catalog,
   genres: catalog.slice(2),
   searchFilter: 'query',
@@ -14,4 +15,5 @@ export const MXPlayerProvider: ProviderType = {
   GetSearchPosts: getSearchPosts,
   GetInfo: getMeta,
   GetStream: getStream,
+  GetEpisodeLinks: getEpisodes,
 };

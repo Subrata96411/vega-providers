@@ -4,6 +4,7 @@ import { commonHeaders } from "../headers";
 const MAIN_URL = "https://www.mxplayer.in";
 const WEB_API = "https://api.mxplayer.in/v1/web";
 const CDN = "https://d3sgzbosmwirao.cloudfront.net";
+const IMAGE_CDN = "https://qqcdnpictest.mxplay.com";
 
 export const getMeta = async function ({
   link,
@@ -37,7 +38,9 @@ export const getMeta = async function ({
         const text = $(el).text().trim() || "";
         const dataId = $(el).attr("data-id") || "";
         const dataTab = $(el).attr("data-tab") || "";
-        const seasonNum = parseInt(dataTab, 10) || (text.match(/Season\s*(\d+)/i) ? parseInt(text.match(/Season\s*(\d+)/i)![1], 10) : 1);
+        const seasonNum =
+          parseInt(dataTab, 10) ||
+          (text.match(/Season\s*(\d+)/i) ? parseInt(text.match(/Season\s*(\d+)/i)![1], 10) : 1);
 
         if (dataId) {
           seasonTabs.push({
@@ -48,10 +51,19 @@ export const getMeta = async function ({
         }
       });
 
+      // If no tabs found from container, fallback to show ID
+      if (seasonTabs.length === 0 && parsed.id) {
+        seasonTabs.push({
+          seasonNum: 1,
+          seasonId: parsed.id,
+          title: "Season 1",
+        });
+      }
+
       // Sort seasons ascending (Season 1, Season 2...)
       seasonTabs.sort((a, b) => a.seasonNum - b.seasonNum);
 
-      // 2. Fetch episodes for each season
+      // 2. Fetch episodes for each season and build both episodesLink and directLinks
       for (const season of seasonTabs) {
         try {
           const epUrl = `${WEB_API}/detail/tab/tvshowepisodes?type=season&id=${season.seasonId}&sortOrder=0&device-density=2&platform=com.mxplay.desktop`;
@@ -71,24 +83,53 @@ export const getMeta = async function ({
 
             if (hls) {
               const fullUrl = hls.startsWith("http") ? hls : `${CDN}/${hls.replace(/^\/+/, "")}`;
+              let image = "";
+              const infoList: any[] = ep.imageInfo || [];
+              const p = infoList.find(
+                (x) =>
+                  x.type === "portrait_large" ||
+                  x.type === "portrait" ||
+                  x.type === "landscape" ||
+                  x.type === "bigpic",
+              );
+              if (p?.url) {
+                image = `${IMAGE_CDN}/${p.url.replace(/^\/+/, "")}`;
+              }
+
               directLinks.push({
                 title: ep.title ? `E${idx + 1}: ${ep.title}` : `Episode ${idx + 1}`,
                 link: fullUrl,
                 type: "series" as const,
                 description: ep.description || undefined,
+                image: image || undefined,
               });
             }
           });
 
-          if (directLinks.length > 0) {
-            linkList.push({
+          linkList.push({
+            title: season.title,
+            episodesLink: JSON.stringify({
+              seasonId: season.seasonId,
+              seasonNum: season.seasonNum,
               title: season.title,
-              directLinks,
-            });
-          }
-        } catch { /* continue to next season */ }
+            }),
+            directLinks: directLinks.length > 0 ? directLinks : undefined,
+          });
+        } catch {
+          // If fetching episodes failed upfront, still offer episodesLink so getEpisodes can fetch it
+          linkList.push({
+            title: season.title,
+            episodesLink: JSON.stringify({
+              seasonId: season.seasonId,
+              seasonNum: season.seasonNum,
+              title: season.title,
+            }),
+          });
+        }
       }
-    } catch { /* fallback below */ }
+    } catch {
+      /* fallback below */
+    }
   }
 
   // Fallback for movies or single stream

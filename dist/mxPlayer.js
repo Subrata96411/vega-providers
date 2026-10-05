@@ -154,6 +154,7 @@ var VegaProvider_mxPlayer = (() => {
   var MAIN_URL2 = "https://www.mxplayer.in";
   var WEB_API2 = "https://api.mxplayer.in/v1/web";
   var CDN = "https://d3sgzbosmwirao.cloudfront.net";
+  var IMAGE_CDN2 = "https://qqcdnpictest.mxplay.com";
   var getMeta = async function({
     link,
     providerContext
@@ -188,6 +189,13 @@ var VegaProvider_mxPlayer = (() => {
             });
           }
         });
+        if (seasonTabs.length === 0 && parsed.id) {
+          seasonTabs.push({
+            seasonNum: 1,
+            seasonId: parsed.id,
+            title: "Season 1"
+          });
+        }
         seasonTabs.sort((a, b) => a.seasonNum - b.seasonNum);
         for (const season of seasonTabs) {
           try {
@@ -201,21 +209,41 @@ var VegaProvider_mxPlayer = (() => {
               const hls = ep.stream?.thirdParty?.hlsUrl || ep.stream?.hls?.high || ep.stream?.hls?.base || ep.stream?.hls?.main;
               if (hls) {
                 const fullUrl = hls.startsWith("http") ? hls : `${CDN}/${hls.replace(/^\/+/, "")}`;
+                let image = "";
+                const infoList = ep.imageInfo || [];
+                const p = infoList.find(
+                  (x) => x.type === "portrait_large" || x.type === "portrait" || x.type === "landscape" || x.type === "bigpic"
+                );
+                if (p?.url) {
+                  image = `${IMAGE_CDN2}/${p.url.replace(/^\/+/, "")}`;
+                }
                 directLinks.push({
                   title: ep.title ? `E${idx + 1}: ${ep.title}` : `Episode ${idx + 1}`,
                   link: fullUrl,
                   type: "series",
-                  description: ep.description || void 0
+                  description: ep.description || void 0,
+                  image: image || void 0
                 });
               }
             });
-            if (directLinks.length > 0) {
-              linkList.push({
-                title: season.title,
-                directLinks
-              });
-            }
+            linkList.push({
+              title: season.title,
+              episodesLink: JSON.stringify({
+                seasonId: season.seasonId,
+                seasonNum: season.seasonNum,
+                title: season.title
+              }),
+              directLinks: directLinks.length > 0 ? directLinks : void 0
+            });
           } catch {
+            linkList.push({
+              title: season.title,
+              episodesLink: JSON.stringify({
+                seasonId: season.seasonId,
+                seasonNum: season.seasonNum,
+                title: season.title
+              })
+            });
           }
         }
       } catch {
@@ -262,6 +290,55 @@ var VegaProvider_mxPlayer = (() => {
     ];
   };
 
+  // providers/mxPlayer/episodes.ts
+  var WEB_API3 = "https://api.mxplayer.in/v1/web";
+  var IMAGE_CDN3 = "https://qqcdnpictest.mxplay.com";
+  var CDN2 = "https://d3sgzbosmwirao.cloudfront.net";
+  var MAIN_URL3 = "https://www.mxplayer.in";
+  var getEpisodes = async function({
+    url,
+    providerContext
+  }) {
+    const { axios } = providerContext;
+    let seasonId = url;
+    try {
+      const parsed = JSON.parse(url);
+      seasonId = parsed.seasonId || parsed.id || url;
+    } catch {
+    }
+    try {
+      const epUrl = `${WEB_API3}/detail/tab/tvshowepisodes?type=season&id=${seasonId}&sortOrder=0&device-density=2&platform=com.mxplay.desktop`;
+      const epRes = await axios.get(epUrl, {
+        headers: { ...commonHeaders, Referer: `${MAIN_URL3}/` }
+      });
+      const items = epRes.data?.items || [];
+      const episodes = [];
+      items.forEach((ep, idx) => {
+        const hls = ep.stream?.thirdParty?.hlsUrl || ep.stream?.hls?.high || ep.stream?.hls?.base || ep.stream?.hls?.main;
+        if (hls) {
+          const fullUrl = hls.startsWith("http") ? hls : `${CDN2}/${hls.replace(/^\/+/, "")}`;
+          let image = "";
+          const infoList = ep.imageInfo || [];
+          const p = infoList.find(
+            (x) => x.type === "portrait_large" || x.type === "portrait" || x.type === "landscape" || x.type === "bigpic"
+          );
+          if (p?.url) {
+            image = `${IMAGE_CDN3}/${p.url.replace(/^\/+/, "")}`;
+          }
+          episodes.push({
+            title: ep.title ? `E${idx + 1}: ${ep.title}` : `Episode ${idx + 1}`,
+            link: fullUrl,
+            description: ep.description || void 0,
+            image: image || void 0
+          });
+        }
+      });
+      return episodes;
+    } catch (err) {
+      return [];
+    }
+  };
+
   // providers/mxPlayer/index.ts
   var MXPlayerProvider = {
     catalog,
@@ -270,7 +347,8 @@ var VegaProvider_mxPlayer = (() => {
     GetHomePage: getPosts,
     GetSearchPosts: getSearchPosts,
     GetInfo: getMeta,
-    GetStream: getStream
+    GetStream: getStream,
+    GetEpisodeLinks: getEpisodes
   };
   return __toCommonJS(mxPlayer_exports);
 })();

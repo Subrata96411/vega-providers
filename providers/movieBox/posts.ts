@@ -91,8 +91,6 @@ async function fetchCatalogPage(
   });
   if (filter === "/newWeb/movie") {
     params.set("tabId", "ONEROOM_MOVIE");
-  } else if (filter === "/newWeb/tv-series") {
-    params.set("tabId", "ONEROOM_TV");
   }
 
   const response = await fetch(
